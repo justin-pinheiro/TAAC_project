@@ -1,4 +1,6 @@
 /Papers
 /SoccerNet
-pycache
+__pycache__
 *.csv
+*.drawio
+.env
