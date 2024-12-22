@@ -14,7 +14,7 @@ class Utilities:
     - plot_training_curves(metrics): Plot loss and accuracy curves for training.
     """
 
-    def __init__(self):
+    def __init__(self, data_path):
         """
         Constructor method to initialize the class attributes.
 
@@ -22,7 +22,7 @@ class Utilities:
         ----------
         - attribute1: Path to the SoccerNet downloaded database
         """
-        self.base_path = "SoccerNet"
+        self.data_path = data_path
 
     def print_labels_distribution(annotations_df):
         label_columns = [col for col in annotations_df.columns if col.startswith('label_')]
@@ -126,73 +126,6 @@ class Utilities:
         plt.tight_layout()
         plt.show()
 
-    def parse_labels_json(self):
-        """
-        Traverse the directory structure and extract annotations into a pandas DataFrame. 
-        Obsolete function as parse_labels_json_with_feature_engineering() 
-        was created to performs feature engineering and add features to the dataframe.
-        
-        Parameters:
-        - base_path (str): Root directory containing the league folders.
-        
-        Returns:
-        - pd.DataFrame: DataFrame containing all annotations with relevant metadata.
-        """
-        rows = []
-
-        for league in os.listdir(self.base_path):
-            league_path = os.path.join(self.base_path, league)
-            if not os.path.isdir(league_path):
-                continue 
-
-            for season in os.listdir(league_path):
-                season_path = os.path.join(league_path, season)
-                if not os.path.isdir(season_path):
-                    continue
-
-                for game_folder in os.listdir(season_path):
-                    game_path = os.path.join(season_path, game_folder)
-                    labels_file = os.path.join(game_path, "Labels-v2.json")
-                    
-                    if not os.path.isfile(labels_file):
-                        continue
-                    
-                    with open(labels_file, "r") as f:
-                        data = json.load(f)
-
-                    league_name = league
-                    season_name = season
-                    game_name = game_folder
-                    away_team = data.get("gameAwayTeam", "")
-                    home_team = data.get("gameHomeTeam", "")
-                    game_date = data.get("gameDate", "")
-                    game_score = data.get("gameScore", "")
-                    url_local = data.get("UrlLocal", "")
-                    url_youtube = data.get("UrlYoutube", "")
-                    
-                    annotations = data.get("annotations", [])
-                    for annotation in annotations:
-                        row = {
-                            "league": league_name,
-                            "season": season_name,
-                            "game_name": game_name,
-                            "away_team": away_team,
-                            "home_team": home_team,
-                            "date": game_date,
-                            "score": game_score,
-                            "url_local": url_local,
-                            "url_youtube": url_youtube,
-                            "game_time": annotation.get("gameTime", ""),
-                            "label": annotation.get("label", ""),
-                            "position": annotation.get("position", ""),
-                            "team": annotation.get("team", ""),
-                            "visibility": annotation.get("visibility", ""),
-                        }
-                        rows.append(row)
-        
-        df = pd.DataFrame(rows)
-        return df
-
     def parse_labels_json_with_feature_engineering(self):
         """
         Traverse the directory structure and extract annotations into a pandas DataFrame,
@@ -206,8 +139,8 @@ class Utilities:
         """
         rows = []
 
-        for league in os.listdir(base_path):
-            league_path = os.path.join(base_path, league)
+        for league in os.listdir(self.data_path):
+            league_path = os.path.join(self.data_path, league)
             if not os.path.isdir(league_path):
                 continue
 
@@ -305,3 +238,82 @@ class Utilities:
         df.fillna(0, inplace=True)
         
         return df
+
+    def __parse_labels_json(self, file_path):
+        rows = []
+        with open(file_path, "r") as f:
+            data = json.load(f)
+
+            away_team = data.get("gameAwayTeam", "")
+            home_team = data.get("gameHomeTeam", "")
+            game_date = data.get("gameDate", "")
+            game_score = data.get("gameScore", "")
+            url_local = data.get("UrlLocal", "")
+            url_youtube = data.get("UrlYoutube", "")
+            
+            annotations = data.get("annotations", [])
+            for annotation in annotations:
+                row = {
+                    "away_team": away_team,
+                    "home_team": home_team,
+                    "date": game_date,
+                    "score": game_score,
+                    "url_local": url_local,
+                    "url_youtube": url_youtube,
+                    "game_time": annotation.get("gameTime", ""),
+                    "label": annotation.get("label", ""),
+                    "position": annotation.get("position", ""),
+                    "team": annotation.get("team", ""),
+                    "visibility": annotation.get("visibility", ""),
+                }
+                rows.append(row)
+        
+        df = pd.DataFrame(rows)
+        return df
+
+    def save_labels_in_csv(self):
+        
+        for league in os.listdir(self.data_path):
+            league_path = os.path.join(self.data_path, league)
+            if not os.path.isdir(league_path):
+                continue 
+
+            for season in os.listdir(league_path):
+                season_path = os.path.join(league_path, season)
+                if not os.path.isdir(season_path):
+                    continue
+
+                for game_folder in os.listdir(season_path):
+                    game_path = os.path.join(season_path, game_folder)
+                    labels_file = os.path.join(game_path, "Labels-v2.json")
+                    
+                    if not os.path.isfile(labels_file):
+                        continue
+                    
+                    df = self.__parse_labels_json(labels_file)
+                    
+                    labels = []
+                    halves = []
+                    times = []
+                    
+                    for index, row in df.iterrows():
+                        game_time = row['game_time']
+                        
+                        half, time_str = game_time.split(' - ')
+                        
+                        labels.append(row['label'])
+                        halves.append(int(half))
+                        times.append(time_str)
+                    
+                    output_dataframe = pd.DataFrame({
+                        'label': labels,
+                        'half': halves,
+                        'time': times
+                    })
+                    
+                    output_dataframe.to_csv(os.path.join(game_path, "labels.csv"), index=False)
+                    print(f"Labels saved to {os.path.join(game_path, 'labels.csv')}")
+
+
+
+

@@ -4,3 +4,4 @@ __pycache__
 *.csv
 *.drawio
 .env
+project.ipynb
