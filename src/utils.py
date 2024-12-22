@@ -303,7 +303,8 @@ class Utilities:
                         
                         labels.append(row['label'])
                         halves.append(int(half))
-                        times.append(time_str)
+                        times.append(int(time_str.split(":")[0]) * 60 + int(time_str.split(":")[1])
+)
                     
                     output_dataframe = pd.DataFrame({
                         'label': labels,
@@ -314,6 +315,8 @@ class Utilities:
                     output_dataframe.to_csv(os.path.join(game_path, "labels.csv"), index=False)
                     print(f"Labels saved to {os.path.join(game_path, 'labels.csv')}")
 
+def get_labels():
+    return ['Ball out of play', 'Clearance', 'Corner', 'Direct free-kick', 'Foul', 'Goal', 'Indirect free-kick', 'Kick-off', 'Offside', 'Penalty', 'Red card', 'Shots off target', 'Shots on target', 'Substitution', 'Throw-in', 'Yellow card', 'Yellow->red card']
 
 
 
