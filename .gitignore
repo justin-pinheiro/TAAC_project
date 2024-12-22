@@ -1,8 +1,9 @@
 /Papers
 /SoccerNet
+/weights
 __pycache__
 *.csv
 *.drawio
 .env
 /myenv
-project.ipynb
+*.ipynb
