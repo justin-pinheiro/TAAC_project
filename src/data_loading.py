@@ -113,7 +113,6 @@ class DataLoading:
             raise FileNotFoundError(f"Feature file {feature_file} not found for video {video_name} (half {half}).")
         
         features = np.load(feature_path)
-        features = self.preprocess_features(features)
 
         labels_file = os.path.join(video_path, 'labels.csv')
         if not os.path.exists(labels_file):
@@ -127,6 +126,7 @@ class DataLoading:
         num_chunks = features.shape[0] // frames_per_chunk
         features = features[:num_chunks * frames_per_chunk]
         features = features.reshape(num_chunks, frames_per_chunk, -1)  # Shape: (num_chunks, frames_per_chunk, 512)
+        features = self.preprocess_features(features)
 
         labels = []
         for chunk_idx in range(num_chunks):
@@ -142,6 +142,8 @@ class DataLoading:
         return features, labels
     
     def preprocess_features(self, features):
+        # Here we apply average pooling
+        features = features.mean(1)
         return features
     
     def preprocess_labels(self, labels):
@@ -157,9 +159,6 @@ class DataLoading:
             for half in range(1,3):
                 features, labels = self.load_features_labels(video_name, half)
                 
-                print(f"Shape: {features.shape}")
-                print(f"Chunks: {features.shape[0]}")
-
                 for chunk_idx in range(features.shape[0]):
                     all_features.append(torch.tensor(features[chunk_idx], dtype=torch.float32))
                     all_labels.append(torch.tensor(labels[chunk_idx], dtype=torch.float32))

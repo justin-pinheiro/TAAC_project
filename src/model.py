@@ -54,7 +54,7 @@ class Model:
         self.input_dim = input_dim
         self.num_classes = num_classes
         self.layers = self.define_model()
-        self.loss_function = loss_function or nn.CrossEntropyLoss()
+        self.loss_function = loss_function or nn.BCEWithLogitsLoss()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to_device(self.device)
 
@@ -66,7 +66,8 @@ class Model:
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Dropout(0.3),
-            nn.Linear(128, self.num_classes)
+            nn.Linear(128, self.num_classes),
+            nn.Sigmoid()
         )
     
     def forward(self, x):
@@ -89,7 +90,7 @@ class Model:
         self.layers.eval()
         with torch.no_grad():
             outputs = self.forward(inputs.to(self.device))
-        return torch.argmax(outputs, dim=1)
+        return outputs
     
     def to_device(self, device):
         self.device = device
