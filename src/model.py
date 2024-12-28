@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class Model:
+class Model(nn.Module):
     """
     A class for defining a model that takes 512 input features and outputs predictions for 17 classes.
 
@@ -51,6 +51,7 @@ class Model:
         Test the model by setting random inputs and targets. Checks that saving and loading weights works.
     """
     def __init__(self, input_dim=512, num_classes=17, loss_function=None):
+        super().__init__()
         self.input_dim = input_dim
         self.num_classes = num_classes
         self.layers = self.define_model()
