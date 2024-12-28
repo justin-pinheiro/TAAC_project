@@ -1,3 +1,4 @@
+from evaluation import Evaluator
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
@@ -75,14 +76,12 @@ class Trainer:
         self.device = torch.device(device)
         self.model.to_device(self.device)
         self.checkpoint_path = None
-        self.metrics = {'train_loss': [], 'val_loss': [], 'train_acc': [], 'val_acc': []}
+        self.metrics = {'train_mAP': [], 'val_mAP': [], 'train_loss': [], 'val_loss': []}
     
     def train(self):
         for epoch in range(self.epochs):
             self.model.layers.train()
             total_loss = 0
-            correct_predictions = 0
-            total_samples = 0
 
             for inputs, targets in self.train_loader:
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
@@ -92,42 +91,25 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
                 total_loss += loss.item() * inputs.size(0)
-                predictions = torch.sigmoid(outputs)
-                predictions = (predictions > self.prediction_threshold).float()
-                correct_predictions += (predictions == targets).sum().item()
-                total_samples += inputs.size(0)
 
-            epoch_loss = total_loss / total_samples
-            epoch_acc = correct_predictions / total_samples
-            self.metrics['train_loss'].append(epoch_loss)
-            self.metrics['train_acc'].append(epoch_acc)
-
+            train_mAP = self.evaluate(self.train_loader)
+            self.metrics['train_mAP'].append(train_mAP)
+            self.metrics['train_loss'].append(total_loss / len(self.train_loader.dataset))
+            
             if self.val_loader:
-                val_loss, val_acc = self.evaluate(self.val_loader)
-                self.metrics['val_loss'].append(val_loss)
-                self.metrics['val_acc'].append(val_acc)
-
+                val_mAP = self.evaluate(self.val_loader)
+                self.metrics['val_mAP'].append(val_mAP)
+            
             if self.scheduler:
                 self.scheduler.step()
-            self.log_training_progress(epoch, epoch_loss, epoch_acc)
+            
+            self.log_training_progress(epoch, total_loss / len(self.train_loader.dataset), train_mAP)
         self.plot_training_loss()
     
     def evaluate(self, data_loader):
-        self.model.layers.eval()
-        total_loss = 0
-        correct_predictions = 0
-        total_samples = 0
-        with torch.no_grad():
-            for inputs, targets in data_loader:
-                inputs, targets = inputs.to(self.device), targets.to(self.device)
-                outputs = self.model.forward(inputs)
-                loss = self.model.loss_function(outputs, targets)
-                total_loss += loss.item() * inputs.size(0)
-                predictions = torch.sigmoid(outputs)
-                predictions = (predictions > self.prediction_threshold).float()
-                correct_predictions += (predictions == targets).sum().item()
-                total_samples += inputs.size(0)
-        return total_loss / total_samples, correct_predictions / total_samples
+        evaluator = Evaluator(self.model, data_loader, self.device, self.batch_size, "mAP", False)
+        metrics = evaluator.evaluate()
+        return metrics["mAP"]
 
     def save_checkpoint(self, file_path):
         checkpoint = {
@@ -152,13 +134,14 @@ class Trainer:
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
     
-    def log_training_progress(self, epoch, loss, accuracy):
-        print(f"Epoch {epoch+1}/{self.epochs}: Loss = {loss:.4f}, Accuracy = {accuracy:.4f}")
+    def log_training_progress(self, epoch, loss, mAP):
+        print(f"Epoch {epoch+1}/{self.epochs}: Loss = {loss:.2f}, mAP = {mAP:.2f}")
     
     def plot_training_loss(self):
         epochs = range(1, self.epochs + 1)
         plt.figure(figsize=(10, 6))
         plt.plot(epochs, self.metrics['train_loss'], label='Training Loss')
+        plt.plot(epochs, self.metrics['train_mAP'], label='Training mAP')
         if 'val_loss' in self.metrics:
             plt.plot(epochs, self.metrics['val_loss'], label='Validation Loss')
         plt.xlabel('Epochs')
