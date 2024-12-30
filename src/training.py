@@ -68,7 +68,7 @@ class Trainer:
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
-        self.optimizer = optimizer or torch.optim.Adam(self.model.layers.parameters(), lr=0.001)
+        self.optimizer = optimizer or torch.optim.Adam(self.model.layers.parameters(), lr=0.0015)
         self.scheduler = scheduler
         self.batch_size = batch_size
         self.epochs = epochs
@@ -103,7 +103,7 @@ class Trainer:
             if self.scheduler:
                 self.scheduler.step()
             
-            self.log_training_progress(epoch, total_loss / len(self.train_loader.dataset), train_mAP)
+            self.log_training_progress(epoch, total_loss / len(self.train_loader.dataset), train_mAP, val_mAP)
         self.plot_training_loss()
     
     def evaluate(self, data_loader):
@@ -113,7 +113,7 @@ class Trainer:
 
     def save_checkpoint(self, file_path):
         checkpoint = {
-            'model_state': self.model.model_architecture.state_dict(),
+            'model_state': self.model.layers.state_dict(),
             'optimizer_state': self.optimizer.state_dict(),
             'scheduler_state': self.scheduler.state_dict() if self.scheduler else None,
             'metrics': self.metrics
@@ -122,7 +122,7 @@ class Trainer:
     
     def load_checkpoint(self, file_path):
         checkpoint = torch.load(file_path)
-        self.model.model_architecture.load_state_dict(checkpoint['model_state'])
+        self.model.layers.load_state_dict(checkpoint['model_state'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state'])
         if self.scheduler and checkpoint['scheduler_state']:
             self.scheduler.load_state_dict(checkpoint['scheduler_state'])
@@ -134,19 +134,18 @@ class Trainer:
     def set_scheduler(self, scheduler):
         self.scheduler = scheduler
     
-    def log_training_progress(self, epoch, loss, mAP):
-        print(f"Epoch {epoch+1}/{self.epochs}: Loss = {loss:.2f}, mAP = {mAP:.2f}")
+    def log_training_progress(self, epoch, loss, train_mAP, val_map):
+        print(f"Epoch {epoch+1}/{self.epochs}: Loss = {loss:.4f}, training mAP = {train_mAP:.4f}, validation mAP = {val_map:.4f}")
     
     def plot_training_loss(self):
         epochs = range(1, self.epochs + 1)
         plt.figure(figsize=(10, 6))
         plt.plot(epochs, self.metrics['train_loss'], label='Training Loss')
         plt.plot(epochs, self.metrics['train_mAP'], label='Training mAP')
-        if 'val_loss' in self.metrics:
-            plt.plot(epochs, self.metrics['val_loss'], label='Validation Loss')
+        plt.plot(epochs, self.metrics['val_mAP'], label='Validation mAP')
         plt.xlabel('Epochs')
         plt.ylabel('Loss')
-        plt.title('Training and Validation Loss')
+        plt.title('Metrics')
         plt.legend()
         plt.show()
 

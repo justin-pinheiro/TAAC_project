@@ -50,25 +50,30 @@ class Model(nn.Module):
     test_model():
         Test the model by setting random inputs and targets. Checks that saving and loading weights works.
     """
-    def __init__(self, input_dim=512, num_classes=17, loss_function=None):
+    def __init__(self, input_dim=512, num_classes=17, loss_function=nn.BCEWithLogitsLoss()):
         super().__init__()
         self.input_dim = input_dim
         self.num_classes = num_classes
         self.layers = self.define_model()
-        self.loss_function = loss_function or nn.BCEWithLogitsLoss()
+        self.loss_function = loss_function 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to_device(self.device)
 
     def define_model(self):
         return nn.Sequential(
-            nn.Linear(self.input_dim, 256),
+            nn.Linear(512, 512),
             nn.ReLU(),
-            nn.Dropout(0.3),
+            nn.BatchNorm1d(512),
+            nn.Dropout(0.6),
+            nn.Linear(512, 256),
+            nn.ReLU(),
+            nn.BatchNorm1d(256),
+            nn.Dropout(0.6),
             nn.Linear(256, 128),
             nn.ReLU(),
-            nn.Dropout(0.3),
-            nn.Linear(128, self.num_classes),
-            nn.Sigmoid()
+            nn.BatchNorm1d(128),
+            nn.Dropout(0.6),
+            nn.Linear(128, 17)
         )
     
     def forward(self, x):
