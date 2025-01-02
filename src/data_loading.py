@@ -1,3 +1,4 @@
+from typing import Counter
 from torch.utils.data import Dataset
 from torch.utils.data import DataLoader
 import torch
@@ -6,6 +7,7 @@ import os
 import pandas as pd
 from SoccerNet.utils import getListGames
 from utils import get_labels
+import matplotlib.pyplot as plt
 
 class DataLoading:
     """
@@ -113,7 +115,6 @@ class DataLoading:
             raise FileNotFoundError(f"Feature file {feature_file} not found for video {video_name} (half {half}).")
         
         features = np.load(feature_path)
-        features = self.preprocess_features(features)
 
         labels_file = os.path.join(video_path, 'labels.csv')
         if not os.path.exists(labels_file):
@@ -127,6 +128,7 @@ class DataLoading:
         num_chunks = features.shape[0] // frames_per_chunk
         features = features[:num_chunks * frames_per_chunk]
         features = features.reshape(num_chunks, frames_per_chunk, -1)  # Shape: (num_chunks, frames_per_chunk, 512)
+        features = self.preprocess_features(features)
 
         labels = []
         for chunk_idx in range(num_chunks):
@@ -142,6 +144,8 @@ class DataLoading:
         return features, labels
     
     def preprocess_features(self, features):
+        # Here we apply average pooling
+        features = features.mean(1)
         return features
     
     def preprocess_labels(self, labels):
@@ -157,9 +161,6 @@ class DataLoading:
             for half in range(1,3):
                 features, labels = self.load_features_labels(video_name, half)
                 
-                print(f"Shape: {features.shape}")
-                print(f"Chunks: {features.shape[0]}")
-
                 for chunk_idx in range(features.shape[0]):
                     all_features.append(torch.tensor(features[chunk_idx], dtype=torch.float32))
                     all_labels.append(torch.tensor(labels[chunk_idx], dtype=torch.float32))
@@ -178,7 +179,35 @@ class DataLoading:
             self.create_dataloader()
             
         return self.data_loader
-    
+
+    def show_label_distribution(self):
+        if self.dataset is None:
+            print("Dataset is empty.")
+            return
+
+        labels = get_labels()
+        label_counts = [0] * len(labels)
+        no_label_count = 0
+
+        for _, label_tensor in self.dataset:
+            label_array = label_tensor.numpy()
+            if label_array.sum() == 0:  # Check if all labels are 0
+                no_label_count += 1
+            else:
+                label_counts = [label_counts[i] + label_array[i] for i in range(len(labels))]
+
+        labels.append("No Label")
+        label_counts.append(no_label_count)
+
+        plt.figure(figsize=(12, 6))
+        plt.bar(labels, label_counts, color='skyblue')
+        plt.xlabel('Labels', fontsize=12)
+        plt.ylabel('Count', fontsize=12)
+        plt.title('Label Distribution', fontsize=14)
+        plt.xticks(rotation=45, ha='right')
+        plt.tight_layout()
+        plt.show()
+
 def test_data_loader(data_path, fps, chunk_length, batch_size, split_type):
 
     # Instantiate the DataLoading object
