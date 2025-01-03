@@ -104,6 +104,10 @@ class Trainer:
                 self.scheduler.step()
             
             self.log_training_progress(epoch, total_loss / len(self.train_loader.dataset), train_mAP, val_mAP)
+<<<<<<< HEAD
+=======
+        self.plot_training_loss()
+>>>>>>> 3aab354570d1ee219462459f503fd74ea3847a81
     
     def evaluate(self, data_loader):
         evaluator = Evaluator(self.model, data_loader, self.device, self.batch_size, "mAP", False)

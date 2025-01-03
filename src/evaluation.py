@@ -96,6 +96,11 @@ class Evaluator:
         else:
             raise NotImplementedError(f"Score type '{self.score_type}' is not implemented.")
 
+<<<<<<< HEAD
+=======
+        if (self.verbose):
+            self.log_evaluation_results(self.metrics)
+>>>>>>> 3aab354570d1ee219462459f503fd74ea3847a81
         return self.metrics
     
     def compute_mAP(self, preds, labels):
