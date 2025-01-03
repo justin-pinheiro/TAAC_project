@@ -216,11 +216,12 @@ class EventSpotter:
             color = class_colors(class_idx)
             plt.plot(time_steps, scores, label=labels_names[class_idx], color=color)
 
-        for second, true_events in ground_truth.items():
-            for class_idx, event in enumerate(true_events):
-                if event == 1:
-                    color = class_colors(class_idx)
-                    plt.scatter(second, 1.05, marker='o', color=color, zorder=5)
+        if (ground_truth):
+            for second, true_events in ground_truth.items():
+                for class_idx, event in enumerate(true_events):
+                    if event == 1:
+                        color = class_colors(class_idx)
+                        plt.scatter(second, 1.05, marker='o', color=color, zorder=5)
 
 
         if show_threshold and self.detection_threshold is not None:
