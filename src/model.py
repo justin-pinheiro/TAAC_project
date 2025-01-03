@@ -50,11 +50,7 @@ class Model(nn.Module):
     test_model():
         Test the model by setting random inputs and targets. Checks that saving and loading weights works.
     """
-<<<<<<< HEAD
     def __init__(self, input_dim=512, num_classes=17, loss_function=nn.BCELoss()):
-=======
-    def __init__(self, input_dim=512, num_classes=17, loss_function=nn.BCEWithLogitsLoss()):
->>>>>>> 3aab354570d1ee219462459f503fd74ea3847a81
         super().__init__()
         self.input_dim = input_dim
         self.num_classes = num_classes
@@ -77,12 +73,8 @@ class Model(nn.Module):
             nn.ReLU(),
             nn.BatchNorm1d(128),
             nn.Dropout(0.6),
-<<<<<<< HEAD
             nn.Linear(128, 17),
             nn.Sigmoid()
-=======
-            nn.Linear(128, 17)
->>>>>>> 3aab354570d1ee219462459f503fd74ea3847a81
         )
     
     def forward(self, x):
