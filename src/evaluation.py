@@ -75,7 +75,7 @@ class Evaluator:
             print(f"Evaluator initialized with the following parameters:")
             print(f"Device: {self.device}, Batch Size: {self.batch_size}, Score Type: {self.score_type}")
 
-    def evaluate(self):
+    def evaluate(self, context_aware):
         if self.verbose:
             print("Starting evaluation.")
         all_preds, all_labels = [], []
@@ -83,6 +83,12 @@ class Evaluator:
         with torch.no_grad():
             for batch in self.data_loader:
                 inputs, labels = batch
+
+                if (context_aware):
+                    # replace all 0 in labels by 1 and everything else by 0
+                    labels = (labels == 0).float()
+                
+
                 inputs, labels = inputs.to(self.device), labels.to(self.device)
                 outputs = self.model(inputs)
                 all_preds.append(outputs)

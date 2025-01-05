@@ -64,7 +64,7 @@ class Trainer:
     get_training_metrics():
         Returns the training metrics (e.g., loss, accuracy) for analysis.
     """
-    def __init__(self, model, train_loader, val_loader=None, optimizer=None, scheduler=None, batch_size=32, epochs=10, prediction_threshold=0.5, device='cpu'):
+    def __init__(self, model, train_loader, val_loader=None, optimizer=None, scheduler=None, batch_size=32, epochs=10, prediction_threshold=0.5, device='cpu', context_aware=False):
         self.model = model
         self.train_loader = train_loader
         self.val_loader = val_loader
@@ -76,6 +76,7 @@ class Trainer:
         self.device = torch.device(device)
         self.model.to_device(self.device)
         self.checkpoint_path = None
+        self.context_aware=context_aware
         self.metrics = {'train_mAP': [], 'val_mAP': [], 'train_loss': [], 'val_loss': []}
     
     def train(self):
@@ -84,10 +85,12 @@ class Trainer:
             total_loss = 0
 
             for inputs, targets in self.train_loader:
+
                 inputs, targets = inputs.to(self.device), targets.to(self.device)
                 self.optimizer.zero_grad()
                 outputs = self.model.forward(inputs)
                 loss = self.model.loss_function(outputs, targets)
+
                 loss.backward()
                 self.optimizer.step()
                 total_loss += loss.item() * inputs.size(0)
@@ -107,7 +110,7 @@ class Trainer:
     
     def evaluate(self, data_loader):
         evaluator = Evaluator(self.model, data_loader, self.device, self.batch_size, "mAP", False)
-        metrics = evaluator.evaluate()
+        metrics = evaluator.evaluate(context_aware=self.context_aware)
         return metrics["mAP"]
 
     def save_checkpoint(self, file_path):

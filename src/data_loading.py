@@ -84,7 +84,7 @@ class DataLoading:
             raise ValueError("The parameter split_type should be 'train', 'valid', or 'test'")
         return getListGames(split=split_type)
 
-    def __init__(self, data_path, fps, chunk_length, batch_size, split_type, shuffle=True):
+    def __init__(self, data_path, fps, chunk_length, batch_size, split_type, shuffle=True, context_aware=False):
         self.data_path = data_path
         self.fps = fps
         self.chunk_length = chunk_length
@@ -94,9 +94,10 @@ class DataLoading:
         self.video_names = self.get_video_names(split_type)
         self.dataset:self.FootballDataset = None
         self.data_loader:DataLoader = None
+        self.context_aware=context_aware
     
     def get_video_path_from_video_name(self, video_name):
-        return os.path.join(self.data_path, video_name)
+        return os.path.join(self.data_path, video_name) 
 
     def load_features_labels(self, video_name, half):
         if (half != 1 and half != 2):
@@ -135,8 +136,11 @@ class DataLoading:
             start_time = chunk_idx * self.chunk_length
             end_time = (chunk_idx + 1) * self.chunk_length
 
-            chunk_labels = labels_df[(labels_df['time'] >= start_time) & (labels_df['time'] < end_time)]['label'].values
-            chunk_labels = self.preprocess_labels(chunk_labels)
+            if (self.context_aware):
+                chunk_labels = self.preprocess_labels_with_context(start_time, end_time, labels_df)
+            else:
+                chunk_labels = labels_df[(labels_df['time'] >= start_time) & (labels_df['time'] < end_time)]['label'].values
+                chunk_labels = self.preprocess_labels(chunk_labels)
             labels.append(chunk_labels)
 
         labels = np.array(labels)  # Shape: (num_chunks, num_categories)
@@ -148,6 +152,28 @@ class DataLoading:
         features = features.mean(1)
         return features
     
+    def preprocess_labels_with_context(self, start_time, end_time, labels_df):
+        categories = get_labels() 
+        distances = []
+
+        for category in categories:
+            category_times = labels_df[labels_df['label'] == category]['time'].values
+            if len(category_times) == 0:
+                distances.append(5400)
+            else:
+                signed_distances = [
+                    time - start_time if time >= start_time and time < end_time else 
+                    (time - start_time if time < start_time else time - end_time)
+                    for time in category_times
+                ]
+                min_distance = min(signed_distances, key=abs)
+                distances.append(min_distance)
+
+
+        # print(f"Start time: '{start_time}', end time: '{end_time}', labels = '{distances}'")
+
+        return distances
+
     def preprocess_labels(self, labels):
         categories = get_labels()
         encoding = [1 if category in labels else 0 for category in categories]
