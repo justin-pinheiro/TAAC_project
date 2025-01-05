@@ -21,3 +21,13 @@ Once the model is trained, we will develop a program to break the video into ind
 ![image](https://github.com/user-attachments/assets/621be694-6e49-4d2d-8ddc-e1c58ed5a180)
 
 ![image](https://github.com/user-attachments/assets/a8a6b04b-d74e-4135-a782-22969324dbd9)
+
+### Usage 
+
+To run the streamlit app, use the following command at the root of the project :
+
+```
+streamlit run src/app.py --server.maxUploadSize 1000
+```
+
+Because the app has been hardcoded to use the features from a specific video, you will have to import this one to try the app. the video is the first half of the game in test_folder/.
