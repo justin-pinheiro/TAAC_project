@@ -58,6 +58,7 @@ class Model(nn.Module):
         self.loss_function = loss_function 
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.to_device(self.device)
+        print(f"Loss function in use: {type(self.loss_function)}")
 
     def define_model(self):
         return nn.Sequential(
