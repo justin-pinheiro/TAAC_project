@@ -70,6 +70,7 @@ class EventSpotter:
         self.nms_window = nms_window
         self.predictions = {}
         self.events = {}
+        self.delta = delta
 
     def detect_events(self, features):
         self.predictions = {}
@@ -163,17 +164,7 @@ class EventSpotter:
             score_type="mAP"
         )
         
-        all_preds = []
-        all_labels = []
-
-        for second in aligned_ground_truth:
-            all_preds.append(aligned_events[second])
-            all_labels.append(aligned_ground_truth[second])
-
-        all_preds = torch.tensor(all_preds, dtype=torch.float32)
-        all_labels = torch.tensor(all_labels, dtype=torch.float32)
-
-        mAP = evaluator.compute_mAP(all_preds, all_labels)
+        mAP = evaluator.compute_mAP_event_spotting(aligned_events, aligned_ground_truth, self.delta)
 
         print(f"mAP: {mAP}")
         
