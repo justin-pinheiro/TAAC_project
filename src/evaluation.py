@@ -140,6 +140,44 @@ class Evaluator:
 
         return mAP
     
+    def compute_mAP_event_spotting(self, aligned_events, aligned_truth, delta):
+        def calculate_ap(predictions, ground_truth, delta):
+            tp, fp = 0, 0
+            total_positives = sum(ground_truth) 
+            precision_recall_pairs = []
+
+            for i, pred in enumerate(predictions):
+                if pred == 1:
+                    # matching 1 in the ground truth within delta range
+                    match = any(ground_truth[max(0, i - delta):min(len(ground_truth), i + delta + 1)])
+                    if match:
+                        tp += 1
+                    else:
+                        fp += 1
+
+                    precision = tp / (tp + fp)
+                    recall = tp / total_positives if total_positives > 0 else 0
+                    precision_recall_pairs.append((precision, recall))
+
+            precision_recall_pairs.sort(key=lambda x: x[1]) 
+            prev_recall = 0
+            ap = 0
+
+            for precision, recall in precision_recall_pairs:
+                ap += precision * (recall - prev_recall)
+                prev_recall = recall
+
+            return ap
+
+        aps = []
+        for class_key in aligned_events:
+            predictions = aligned_events[class_key]
+            ground_truth = aligned_truth.get(class_key, [0] * len(predictions))
+            ap = calculate_ap(predictions, ground_truth, delta)
+            aps.append(ap)
+
+        return sum(aps) / len(aps) if aps else 0.0
+    
     def log_evaluation_results(self, metrics):
         print("Evaluation Results:")
         for metric, value in metrics.items():
