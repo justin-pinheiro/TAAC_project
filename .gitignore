@@ -9,3 +9,5 @@ __pycache__
 *.ipynb
 test_folder/
 highlights/
+
+.venv/

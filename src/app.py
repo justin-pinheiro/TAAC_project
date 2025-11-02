@@ -8,7 +8,7 @@ import streamlit as st
 import cv2
 import numpy as np
 from training import Trainer
-from utils import get_labels
+from model.labels_manager import get_labels
 
 class App:
     """

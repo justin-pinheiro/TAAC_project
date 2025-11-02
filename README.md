@@ -11,6 +11,12 @@ This project was built for the TAAC class (Advanced Topics in Machine Learning) 
 
 It it based on the SoccerNet dataset (https://www.soccer-net.org/data) and the research paper "SoccerNet: A Scalable Dataset for Action Spotting in Soccer Videos" by Silvio Giancola, Mohieddine Amine, Tarek Dghaily and Bernard Ghanem.
 
+## Data exploration
+
+![alt text](images/events_distribution.png)
+
+![alt text](images/events_time_distribution.png)
+
 ## Usage 
 
 To run the streamlit app, use the following command at the root of the project :

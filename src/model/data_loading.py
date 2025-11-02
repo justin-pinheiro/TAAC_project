@@ -6,7 +6,7 @@ import numpy as np
 import os
 import pandas as pd
 from SoccerNet.utils import getListGames
-from utils import get_labels
+from model.labels_manager import get_labels
 import matplotlib.pyplot as plt
 
 class DataLoading:

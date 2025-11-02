@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from utils import get_labels
+from model.labels_manager import get_labels
 
 class EventSpotter:
     """
