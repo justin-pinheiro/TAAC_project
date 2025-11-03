@@ -1,9 +1,9 @@
-from evaluation import Evaluator
+from model.evaluation import Evaluator
 import torch
 import numpy as np
 import matplotlib.pyplot as plt
 from collections import defaultdict
-from model.labels_manager import get_labels
+from model.labels_manager import LabelsManager
 
 class EventSpotter:
     """
@@ -63,7 +63,8 @@ class EventSpotter:
         If final_predictions, it should use events instead of predictions to only show final predictions.
     """
 
-    def __init__(self, model, fps, detection_threshold=0.5, nms_window=60, delta=60):
+    def __init__(self, labels_manager: LabelsManager, model, fps, detection_threshold=0.5, nms_window=60, delta=60):
+        self.labels_manager = labels_manager
         self.model = model
         self.fps = fps
         self.detection_threshold = detection_threshold
@@ -194,7 +195,7 @@ class EventSpotter:
         time_steps = list(self.predictions.keys())
         class_scores = {class_idx: [] for class_idx in range(classes)}
         
-        labels_names = get_labels()
+        labels_names = self.labels_manager.get_labels()
 
         for second, predictions in self.predictions.items():
             for class_idx, score in enumerate(predictions):

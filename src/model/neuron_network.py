@@ -1,7 +1,7 @@
-import torch
+from torch import device, cuda, no_grad, save, load, randn, randint
 import torch.nn as nn
 
-class Model(nn.Module):
+class NeuronNetwork(nn.Module):
     """
     A class for defining a model that takes 512 input features and outputs predictions for 17 classes.
 
@@ -56,7 +56,7 @@ class Model(nn.Module):
         self.num_classes = num_classes
         self.layers = self.define_model()
         self.loss_function = loss_function 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        self.device = device("cuda" if cuda.is_available() else "cpu")
         self.to_device(self.device)
         print(f"Loss function in use: {type(self.loss_function)}")
 
@@ -82,10 +82,10 @@ class Model(nn.Module):
         return self.layers(x)
     
     def save_weights(self, file_path):
-        torch.save(self.layers.state_dict(), file_path)
+        save(self.layers.state_dict(), file_path)
     
     def load_weights(self, file_path):
-        self.layers.load_state_dict(torch.load(file_path, weights_only=True))
+        self.layers.load_state_dict(load(file_path, weights_only=True))
         self.layers.to(self.device)
     
     def get_loss_function(self):
@@ -96,7 +96,7 @@ class Model(nn.Module):
     
     def predict(self, inputs):
         self.layers.eval()
-        with torch.no_grad():
+        with no_grad():
             outputs = self.forward(inputs.to(self.device))
         return outputs
     
@@ -105,10 +105,10 @@ class Model(nn.Module):
         self.layers.to(self.device)
 
 def test_model(filename):
-    model = Model(input_dim=512, num_classes=17)
+    model = NeuronNetwork(input_dim=512, num_classes=17)
     batch_size = 8
-    dummy_inputs = torch.randn(batch_size, model.input_dim).to(model.device)
-    dummy_targets = torch.randint(0, model.num_classes, (batch_size,)).to(model.device)
+    dummy_inputs = randn(batch_size, model.input_dim).to(model.device)
+    dummy_targets = randint(0, model.num_classes, (batch_size,)).to(model.device)
 
     outputs = model.forward(dummy_inputs)
     assert outputs.shape == (batch_size, model.num_classes), f"Expected output shape ({batch_size}, {model.num_classes}), got {outputs.shape}"

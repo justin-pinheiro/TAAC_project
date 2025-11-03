@@ -1,4 +1,5 @@
-from evaluation import Evaluator
+import os
+from model.evaluation import Evaluator
 import torch
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
@@ -123,12 +124,16 @@ class Trainer:
         torch.save(checkpoint, file_path)
     
     def load_checkpoint(self, file_path):
-        checkpoint = torch.load(file_path)
-        self.model.layers.load_state_dict(checkpoint['model_state'])
-        self.optimizer.load_state_dict(checkpoint['optimizer_state'])
-        if self.scheduler and checkpoint['scheduler_state']:
-            self.scheduler.load_state_dict(checkpoint['scheduler_state'])
-        self.metrics = checkpoint['metrics']
+        if os.path.exists(file_path):
+            checkpoint = torch.load(file_path)
+            self.model.layers.load_state_dict(checkpoint['model_state'])
+            self.optimizer.load_state_dict(checkpoint['optimizer_state'])
+            if self.scheduler and checkpoint['scheduler_state']:
+                self.scheduler.load_state_dict(checkpoint['scheduler_state'])
+            self.metrics = checkpoint['metrics']
+        else:
+            print(f"File {file_path} does not exist.")
+            
     
     def set_optimizer(self, optimizer):
         self.optimizer = optimizer

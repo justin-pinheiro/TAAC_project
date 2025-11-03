@@ -228,7 +228,7 @@ class LabelsManager():
                         
                         half, time_str = game_time.split(' - ')
                         
-                        labels.append(self.__LABELS.index(row['label']))
+                        labels.append(row['label'])
                         halves.append(int(half))
                         times.append(int(time_str.split(":")[0]) * 60 + int(time_str.split(":")[1]))
                     

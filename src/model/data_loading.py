@@ -1,18 +1,20 @@
 from typing import Counter
-from torch.utils.data import Dataset
+from torch import float32, tensor
 from torch.utils.data import DataLoader
-import torch
 import numpy as np
 import os
 import pandas as pd
 from SoccerNet.utils import getListGames
-from model.labels_manager import get_labels
 import matplotlib.pyplot as plt
+
+from domain.football_dataset import FootballDataset
+from model.labels_manager import LabelsManager
 
 class DataLoading:
     """
-    A class for loading features and labels for football videos, creating a PyTorch Dataset, 
-    and preparing DataLoaders for model training and evaluation.
+    Loads labels and features from football videos.
+    Relies on a PyTorch Dataset.
+    Prepares DataLoaders for model training and evaluation.
 
     Attributes:
     ----------
@@ -68,23 +70,8 @@ class DataLoading:
         using the `create_dataloader` method.
     """
 
-    class FootballDataset(Dataset):
-        def __init__(self, features, labels):
-            self.features = features
-            self.labels = labels
-
-        def __len__(self):
-            return len(self.features)
-
-        def __getitem__(self, idx):
-            return self.features[idx], self.labels[idx]
-
-    def get_video_names(self, split_type):
-        if (split_type != "train" and split_type != "valid" and split_type != "test"):
-            raise ValueError("The parameter split_type should be 'train', 'valid', or 'test'")
-        return getListGames(split=split_type)
-
-    def __init__(self, data_path, fps, chunk_length, batch_size, split_type, shuffle=True, context_aware=False):
+    def __init__(self, label_manager:LabelsManager, data_path, fps, chunk_length, batch_size, split_type, shuffle=True, context_aware=False):
+        self.label_manager = label_manager
         self.data_path = data_path
         self.fps = fps
         self.chunk_length = chunk_length
@@ -92,12 +79,17 @@ class DataLoading:
         self.shuffle = shuffle
         self.split_type = split_type
         self.video_names = self.get_video_names(split_type)
-        self.dataset:self.FootballDataset = None
-        self.data_loader:DataLoader = None
-        self.context_aware=context_aware
+        self.dataset: FootballDataset = None
+        self.data_loader: DataLoader = None
+        self.context_aware = context_aware
     
     def get_video_path_from_video_name(self, video_name):
         return os.path.join(self.data_path, video_name) 
+
+    def get_video_names(self, split_type):
+        if (split_type != "train" and split_type != "valid" and split_type != "test"):
+            raise ValueError("The parameter split_type should be 'train', 'valid', or 'test'")
+        return getListGames(split=split_type)
 
     def load_features_labels(self, video_name, half):
         if (half != 1 and half != 2):
@@ -116,6 +108,7 @@ class DataLoading:
             raise FileNotFoundError(f"Feature file {feature_file} not found for video {video_name} (half {half}).")
         
         features = np.load(feature_path)
+        print(f"Features shape = {features.shape}")
 
         labels_file = os.path.join(video_path, 'labels.csv')
         if not os.path.exists(labels_file):
@@ -125,11 +118,17 @@ class DataLoading:
         labels_df = labels_df[labels_df['half'] == half]
 
         frames_per_chunk = self.chunk_length * self.fps
+        print(f"Frames per chunk = {frames_per_chunk}")
 
         num_chunks = features.shape[0] // frames_per_chunk
+        print(f"Chunks count = {num_chunks}")
+
         features = features[:num_chunks * frames_per_chunk]
         features = features.reshape(num_chunks, frames_per_chunk, -1)  # Shape: (num_chunks, frames_per_chunk, 512)
         features = self.preprocess_features(features)
+
+        print(f"Features shape : {features.shape}")
+        print(f"Features : {features}")
 
         labels = []
         for chunk_idx in range(num_chunks):
@@ -140,10 +139,12 @@ class DataLoading:
                 chunk_labels = self.preprocess_labels_with_context(start_time, end_time, labels_df)
             else:
                 chunk_labels = labels_df[(labels_df['time'] >= start_time) & (labels_df['time'] < end_time)]['label'].values
-                chunk_labels = self.preprocess_labels(chunk_labels)
+                chunk_labels = self.encode_labels(chunk_labels)
             labels.append(chunk_labels)
 
         labels = np.array(labels)  # Shape: (num_chunks, num_categories)
+        print(f"Labels shape : {labels.shape}")
+        print(f"Labels : {labels}")
 
         return features, labels
     
@@ -153,7 +154,7 @@ class DataLoading:
         return features
     
     def preprocess_labels_with_context(self, start_time, end_time, labels_df):
-        categories = get_labels() 
+        categories = self.label_manager.get_labels() 
         distances = []
 
         for category in categories:
@@ -174,9 +175,9 @@ class DataLoading:
 
         return distances
 
-    def preprocess_labels(self, labels):
-        categories = get_labels()
-        encoding = [1 if category in labels else 0 for category in categories]
+    def encode_labels(self, labels):
+
+        encoding = [1 if category in labels else 0 for category in self.label_manager.get_labels()]
         return encoding
     
     def create_dataset(self):
@@ -184,14 +185,23 @@ class DataLoading:
         all_labels = []
 
         for video_name in self.video_names:
-            for half in range(1,3):
+            for half in (1,2):
+                print(f"-----------------\nLoading features for game {video_name}, half={half}\n-----------------")
                 features, labels = self.load_features_labels(video_name, half)
                 
-                for chunk_idx in range(features.shape[0]):
-                    all_features.append(torch.tensor(features[chunk_idx], dtype=torch.float32))
-                    all_labels.append(torch.tensor(labels[chunk_idx], dtype=torch.float32))
+                num_chunks = features.shape[0]
 
-        dataset = self.FootballDataset(features=all_features,labels=all_labels)
+                if num_chunks == 0:
+                    raise Exception(f"No chunks loaded for game {video_name}")
+
+                print(f"Features shape = {features.shape}")
+                print(f"Labels shape = {labels.shape}")
+
+                for chunk_idx in range(features.shape[0]):
+                    all_features.append(tensor(features[chunk_idx], dtype=float32))
+                    all_labels.append(tensor(labels[chunk_idx], dtype=float32))
+
+        dataset = FootballDataset(features=all_features,labels=all_labels)
 
         self.dataset = dataset
     
@@ -211,7 +221,7 @@ class DataLoading:
             print("Dataset is empty.")
             return
 
-        labels = get_labels()
+        labels = self.label_manager.get_labels()
         label_counts = [0] * len(labels)
         no_label_count = 0
 
@@ -233,55 +243,3 @@ class DataLoading:
         plt.xticks(rotation=45, ha='right')
         plt.tight_layout()
         plt.show()
-
-def test_data_loader(data_path, fps, chunk_length, batch_size, split_type):
-
-    # Instantiate the DataLoading object
-    data_loader_instance = DataLoading(data_path, fps, chunk_length, batch_size, split_type)
-    data_loader_instance.create_dataset()
-
-    data_loader_instance.create_dataloader()
-    data_loader: DataLoader = data_loader_instance.get_dataloader()
-
-    # General DataLoader Information
-    print("=" * 50)
-    print("DataLoader Summary")
-    print("=" * 50)
-    print(f"Data path: {data_path}")
-    print(f"FPS: {fps}")
-    print(f"Batch size: {batch_size}")
-    print(f"Split type: {split_type}")
-    print(f"Shuffle: {data_loader_instance.shuffle}")
-    print(f"Total samples in dataset: {len(data_loader_instance.dataset)}")
-    print(f"Total batches: {len(data_loader)}")
-    print("=" * 50)
-
-    # Iterate through the DataLoader
-    for i, (features, labels) in enumerate(data_loader):
-        print(f"Batch {i+1} Details:")
-        print("-" * 50)
-
-        # Features information
-        print("Features:")
-        print(f"Shape: {features.shape}")
-        print(f"Data type: {features.dtype}")
-        print(f"Device: {features.device}")
-        print(f"Sample data: {features[0][:5]}")  # Print first 5 values of the first sample
-        print(f"Min: {features.min().item()}, Max: {features.max().item()}, Mean: {features.mean().item()}, Std: {features.std().item()}")
-        
-        # Labels information
-        print("Labels:")
-        print(f"Shape: {labels.shape}")
-        print(f"Data type: {labels.dtype}")
-        print(f"Device: {labels.device}")
-        print(f"Sample data: {labels[0]}")  # Print the first label
-        print("-" * 50)
-
-        # Check if the batch size is correct
-        assert features.size(0) == batch_size, f"Expected batch size {batch_size}, but got {features.size(0)}"
-        print(f"Batch {i+1} has {features.size(0)} samples (correct batch size).")
-        print("=" * 50)
-
-        # Stop after the second batch for demonstration purposes
-        if i == 1:
-            break
